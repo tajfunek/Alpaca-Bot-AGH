@@ -15,8 +15,6 @@ public class Main {
         try(CLI cli = new CLI(api)) {}
         catch (IOException e) {
             throw new RuntimeException(e);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
     }
 }

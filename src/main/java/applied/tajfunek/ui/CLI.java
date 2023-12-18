@@ -13,7 +13,7 @@ public class CLI implements AutoCloseable{
     private final Scanner consoleScanner;
     private final Interpreter interpreter;
 
-    CLI(AlpacaAPI api) throws IOException {
+    public CLI(AlpacaAPI api) throws IOException {
         this.logger = LoggerFactory.getLogger(CLI.class);
         this.interpreter = new Interpreter(api);
 
@@ -33,7 +33,7 @@ public class CLI implements AutoCloseable{
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() throws IOException {
         this.consoleWriter.close();
         this.consoleScanner.close();
         logger.atInfo().log("Closed CLI interface.");
