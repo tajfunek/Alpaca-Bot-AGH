@@ -1,31 +1,42 @@
 package applied.tajfunek.ui;
 
 import net.jacobpeterson.alpaca.AlpacaAPI;
-import org.checkerframework.checker.units.qual.C;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.Scanner;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-
+@ExtendWith(MockitoExtension.class)
 class CLITest {
     PrintStream standardOut = System.out;
     private final ByteArrayOutputStream outputStreamCaptor = new ByteArrayOutputStream();
+
+    Interpreter interpreter;
+    private CLI cli;
+
     @BeforeEach
     void setUp() {
         System.setOut(new PrintStream(outputStreamCaptor));
     }
     @Test
     void InitializationTest() {
-        try (CLI cli = new CLI(new AlpacaAPI())) {
+        interpreter = Mockito.mock(DefaultInterpreter.class);
+        Mockito.when(interpreter.interpret(new String[]{"account","summary"})).thenReturn("Welcome message");
+
+        try {
+            cli = new CLI(interpreter);
         } catch (Exception e) {
-            fail();
+            fail(e);
         }
-        Scanner scan = new Scanner(System.in);
-        assertEquals("Welcome!", outputStreamCaptor.toString().trim());
+
+        assertEquals("Welcome message", outputStreamCaptor.toString().trim());
+
     }
 
     @AfterEach
