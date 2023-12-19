@@ -7,12 +7,13 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 
 public class DefaultInterpreter implements Interpreter{
-
-    private final AlpacaAPI api;
     private final Logger logger;
-    public DefaultInterpreter(AlpacaAPI api) {
-        this.logger = LoggerFactory.getLogger(DefaultInterpreter.class);
-        this.api = api;
+    public DefaultInterpreter() throws Exception{
+        this.logger = LoggerFactory.getLogger(this.getClass());
+        if (this.logger == null) {
+            throw new Exception("Failed to generate logger");
+        }
+        logger.atInfo().setMessage("Successfully created interpreter").log();
     }
 
     public String interpret(String[] command) {
@@ -36,15 +37,15 @@ public class DefaultInterpreter implements Interpreter{
         }
     }
 
-    private String printHelp() {
+    String printHelp() {
         return "";
     }
 
-    private String orderAction(String[] command) {
+    String orderAction(String[] command) {
         return "";
     }
 
-    private String accountAction(String[] command) {
+    String accountAction(String[] command) {
         StringBuilder builder = new StringBuilder();
         String[] arguments;
         if (command.length == 1) {

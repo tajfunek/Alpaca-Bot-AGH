@@ -22,8 +22,8 @@ class DefaultInterpreterTest {
 
     @Test
     void interpretTest() {
-        Interpreter interpreter = Mockito.mock(DefaultInterpreter.class);
-        Mockito.when(interpreter.interpret(Mockito.anyIterable())).th
+        DefaultInterpreter interpreter = Mockito.mock(DefaultInterpreter.class);
+        Mockito.when(interpreter.interpret(Mockito.any())).thenCallRealMethod();
         Mockito.when(interpreter.accountAction(new String[]{"account", "summary"})).thenReturn("Account Test");
         Mockito.when(interpreter.orderAction(new String[]{"order"})).thenReturn("Order Test");
         Mockito.when(interpreter.printHelp()).thenReturn("Help test");

@@ -13,12 +13,15 @@ public class CLI implements Closeable{
     private final Scanner consoleScanner;
     private final Interpreter interpreter;
 
-    public CLI(Interpreter interpreter) throws IOException {
+    public CLI(Interpreter interpreter) throws Exception {
         this.logger = LoggerFactory.getLogger(CLI.class);
+        if (logger == null) throw new Exception("Failed to create a logger in CLI");
+
         this.interpreter = interpreter;
 
         this.consoleScanner = new Scanner(System.in);
         this.consoleWriter = new BufferedWriter(new OutputStreamWriter(System.out));
+        logger.atInfo().setMessage("Initialized CLI object").log();
 
         welcomeMessage();
     }

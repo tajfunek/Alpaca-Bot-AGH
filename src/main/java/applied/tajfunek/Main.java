@@ -11,10 +11,20 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) {
-        AlpacaAPI api = new AlpacaAPI();
-        Interpreter interpreter = new DefaultInterpreter(api);
-        try(CLI cli = new CLI(interpreter)) {}
-        catch (IOException e) {
+        Logger logger = LoggerFactory.getLogger("applied.tajfunek");
+        if (logger == null) throw new RuntimeException("Cannot create a logger");
+
+        Interpreter interpreter;
+        try {
+            interpreter = new DefaultInterpreter();
+        } catch (Exception e) {
+            logger.atError().setCause(e).log();
+            throw new RuntimeException("Cannot create a logger");
+        }
+
+        try (CLI cli = new CLI(interpreter)) {
+        } catch (Exception e) {
+            logger.atError().setCause(e).log();
             throw new RuntimeException(e);
         }
     }
