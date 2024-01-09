@@ -4,6 +4,7 @@ import applied.tajfunek.alpaca.exceptions.SymbolException;
 import net.jacobpeterson.alpaca.AlpacaAPI;
 import net.jacobpeterson.alpaca.model.endpoint.accountconfiguration.AccountConfiguration;
 import net.jacobpeterson.alpaca.model.endpoint.clock.Clock;
+import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.bar.enums.BarTimePeriod;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.quote.Quote;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.crypto.historical.quote.CryptoQuote;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.crypto.historical.quote.LatestCryptoQuotesResponse;
@@ -18,6 +19,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.Collections;
 import java.util.Map;
 
@@ -29,7 +33,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class CryptoExchangeTest {
     private AlpacaAPI api;
-    private Exchange exchange;
+    private CryptoExchange exchange;
     private final Logger logger;
 
     CryptoExchangeTest() {
@@ -71,6 +75,13 @@ class CryptoExchangeTest {
 
     @Test
     void getMarketData() {
+        try {
+            var bars = exchange.getMarketData(10, ZonedDateTime.now(), BarTimePeriod.MINUTE, 15, ChronoUnit.DAYS);
+            assertEquals(10, bars.size());
+        } catch (AlpacaClientException e) {
+            fail(e);
+            logAlpacaException(e);
+        }
     }
 
     private void logAlpacaException(AlpacaClientException e) {
