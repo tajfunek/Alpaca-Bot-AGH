@@ -5,6 +5,7 @@ import applied.tajfunek.alpaca.CryptoExchange;
 import applied.tajfunek.alpaca.Exchange;
 import applied.tajfunek.alpaca.exceptions.SymbolException;
 import applied.tajfunek.strategy.Random;
+import applied.tajfunek.strategy.SMAStrategy;
 import net.jacobpeterson.alpaca.AlpacaAPI;
 import net.jacobpeterson.alpaca.model.endpoint.account.Account;
 import net.jacobpeterson.alpaca.rest.AlpacaClientException;
@@ -15,8 +16,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
+
 
 public class Main {
+
     public static void main(String[] args) {
         CryptoExchange ex;
         try {
@@ -24,10 +28,7 @@ public class Main {
         } catch (SymbolException e) {
             throw new RuntimeException(e);
         }
-        try {
-            Random r = new Random(ex, 30, ChronoUnit.SECONDS, 1,1,10, 1000.0);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        SMAStrategy str = new SMAStrategy(ex, 20);
+        str.run(120, 30, ChronoUnit.SECONDS);
     }
 }

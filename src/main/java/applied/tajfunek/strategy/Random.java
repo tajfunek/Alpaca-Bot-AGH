@@ -6,7 +6,6 @@ import net.jacobpeterson.alpaca.rest.AlpacaClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.channels.AsynchronousCloseException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;

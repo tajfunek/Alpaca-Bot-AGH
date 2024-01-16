@@ -40,7 +40,7 @@ public class CryptoExchange {
 
     public boolean isOpen() throws AlpacaClientException {
         // You can always make trades on crypto
-        return true;
+        return api.clock().get().getIsOpen();
     }
 
     public Quote getLatestQuote() throws AlpacaClientException {
