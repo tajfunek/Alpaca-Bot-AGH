@@ -23,9 +23,16 @@ public class Main {
 
     public static void main(String[] args) {
         CryptoExchange ex;
+        Logger logger = LoggerFactory.getLogger("applied.tajfunek.Main");
+        double startAmount;
+        AlpacaAPI api;
         try {
-            ex = new CryptoExchange(new AlpacaAPI(), "BTC/USD");
-        } catch (SymbolException e) {
+            api = new AlpacaAPI();
+            api.positions().closeAll(Boolean.TRUE);
+            startAmount = Double.parseDouble(api.account().get().getCash());
+            ex = new CryptoExchange(api, "BTC/USD");
+
+        } catch (SymbolException | AlpacaClientException e) {
             throw new RuntimeException(e);
         }
         SMAStrategy str = new SMAStrategy(ex, 20);

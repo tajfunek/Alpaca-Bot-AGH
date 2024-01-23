@@ -1,17 +1,20 @@
 <configuration scan="true">
-    <appender name="FILE-APP" class="ch.qos.logback.core.ConsoleAppender">
+
+    <appender name="CONSOLE-APP" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
-    <!-- <appender name="FILE-APP" class="ch.qos.logback.core.FileAppender">
+
+    <appender name="FILE-APP" class="ch.qos.logback.core.FileAppender">
         <append>false</append>
         <file>logs/log.txt</file>
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
             <pattern>%-5level %logger{36} - %msg%n</pattern>
         </encoder>
-    </appender> -->
+    </appender>
+
     <appender name="FILE-ALPACA" class="ch.qos.logback.core.FileAppender">
         <append>false</append>
         <file>logs/log-alpaca.txt</file>
@@ -23,6 +26,7 @@
         <appender-ref ref="FILE-ALPACA"/>
     </logger>
     <logger name="applied.tajfunek">
-        <appender-ref ref="FILE-APP" />
+        <appender-ref ref="CONSOLE-APP" />
     </logger>
+
 </configuration>

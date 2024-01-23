@@ -1,6 +1,6 @@
 package applied.tajfunek.alpaca;
 
-import applied.tajfunek.alpaca.exceptions.SymbolException;
+import applied.tajfunek.alpaca.exceptions.*;
 import net.jacobpeterson.alpaca.AlpacaAPI;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.bar.enums.BarTimePeriod;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.quote.Quote;
@@ -13,10 +13,12 @@ import net.jacobpeterson.alpaca.rest.AlpacaClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.SocketTimeoutException;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 
 public class CryptoExchange {
@@ -45,7 +47,7 @@ public class CryptoExchange {
 
     public Quote getLatestQuote() throws AlpacaClientException {
         try {
-            logger.atInfo().setMessage("Executing API call for latest quote on {}").addArgument(symbol).log();
+            logger.atDebug().setMessage("Executing API call for latest quote on {}").addArgument(symbol).log();
             return api.cryptoMarketData().
                     getLatestQuotes(Collections.singleton("BTC/USD")).
                     getQuotes().
@@ -71,28 +73,105 @@ public class CryptoExchange {
         return bars;
     }
 
-    public Order marketOrder(OrderSide side, Double quantity) throws AlpacaClientException {
-        return api.orders().requestFractionalMarketOrder(symbol, quantity, side);
+    public Order marketSell(Double quantity) throws ExchangeException {
+        logger.atDebug()
+                .setMessage("Placing MARKET SELL order: {} {} (quantity, symbol)")
+                .addArgument(quantity)
+                .addArgument(symbol)
+                .log();
+
+        try {
+            return api.orders().requestFractionalMarketOrder(symbol, quantity, side);
+        } catch (AlpacaClientException e) {
+            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
+                throw new ConnectionException(e);
+            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
+                throw new InsufficientSharesException(e);
+            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
+                throw new UnprocessableRequestException(e);
+            } else {
+                // Other exceptions are not specified in API
+                logger.atError().setCause(e).log();
+                throw new RuntimeException(e);
+            }
+        }
     }
 
-    public Order limitOrder(OrderSide side, Double quantity, Double limitPrice, OrderTimeInForce tif) throws AlpacaClientException {
-        return api.orders().requestLimitOrder(symbol, quantity, side, tif, limitPrice, false);
+    public Order marketBuy(Double quantity) throws ExchangeException {
+        logger.atDebug()
+                .setMessage("Placing MARKET BUY order: {} {} (quantity, symbol)")
+                .addArgument(quantity)
+                .addArgument(symbol)
+                .log();
+        try {
+            return api.orders().requestFractionalMarketOrder(symbol, quantity, OrderSide.BUY);
+        } catch (AlpacaClientException e) {
+            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
+                throw new ConnectionException(e);
+            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
+                throw new InsufficientBuyingPowerException(e);
+            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
+                throw new UnprocessableRequestException(e);
+            } else {
+                // Other exceptions are not specified in API
+                logger.atError().setCause(e).log();
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    public Order limitOrder(OrderSide side, Double quantity, Double limitPrice, OrderTimeInForce tif) throws ExchangeException {
+        logger.atDebug()
+                .setMessage("Placing LIMIT order: {} {} {} {} (side, quantity, limit, symbol)")
+                .addArgument(side)
+                .addArgument(quantity)
+                .addArgument(limitPrice)
+                .addArgument(symbol)
+                .log();
+        try {
+            return api.orders().requestLimitOrder(symbol, quantity, side, tif, limitPrice, false);
+        } catch (AlpacaClientException e) {
+            throw new ExchangeException(e);
+        }
     }
 
     public Order stopLimitOrder(OrderSide side, Double quantity, Double limitPrice, Double stopPrice, OrderTimeInForce tif) throws AlpacaClientException {
+        logger.atDebug()
+                .setMessage("Placing STOP LIMIT order: {} {} {} {} (side, quantity, stop, limit, symbol)")
+                .addArgument(side)
+                .addArgument(quantity)
+                .addArgument(stopPrice)
+                .addArgument(limitPrice)
+                .addArgument(symbol)
+                .log();
         return api.orders().requestOrder(symbol, quantity, null, side, OrderType.STOP_LIMIT, tif, limitPrice,
                 stopPrice, null, null, false, null, null,
                 null, null, null);
     }
 
     public Order stopOrder(OrderSide side, Double quantity, Double stopPrice, OrderTimeInForce tif) throws AlpacaClientException {
+        logger.atDebug()
+                .setMessage("Placing STOP order: {} {} {} {} (side, quantity, stop, symbol)")
+                .addArgument(side)
+                .addArgument(quantity)
+                .addArgument(stopPrice)
+                .addArgument(symbol)
+                .log();
         return api.orders().requestOrder(symbol, quantity, null, side, OrderType.STOP, tif, null,
                 stopPrice, null, null, false, null, null,
                 null, null, null);
     }
 
     public void cancelAll() throws  AlpacaClientException {
-        api.positions().close(this.symbol,null, 100.0);
+        api.positions().close(getAsset(),null, 100.0);
+    }
+
+    public String getSymbol() {
+        return this.symbol;
+    }
+
+    private String getAsset() {
+        return String.join("",this.symbol.split("/"));
     }
 }
 

@@ -111,6 +111,67 @@ public class SMAStrategy {
         } while (Duration.between(timeStart, Instant.now()).getSeconds() < timeInSeconds);
     }
 
+    void checkStatusAndMakeTrade() {
+        try {
+            var data = exchange.getMarketData(ma_len, ZonedDateTime.now(), BarTimePeriod.DAY, 1, ChronoUnit.DAYS);
+
+            if (data == null || data.size() != ma_len) {
+                /* Shouldn't happen without throwing AlpacaClientException */
+                log.atError()
+                        .setMessage("Data length ({}) doesn't match desired length ({})")
+                        .addArgument(data != null ? data.size() : "null")
+                        .addArgument(ma_len)
+                        .log();
+
+                throw new RuntimeException();
+            }
+            movingAverage = data.stream().mapToDouble(Bar::getClose).average().orElse(0);
+            if (movingAverage == 0) {
+                log.atError()
+                        .setMessage("Calculated moving average is 0")
+                        .log();
+
+                throw new RuntimeException();
+            }
+            log.atDebug()
+                    .setMessage("Calculated moving average is {}")
+                    .addArgument(movingAverage)
+                    .log();
+
+            Quote quote = exchange.getLatestQuote();
+            decision = decideBasedOnPrice(movingAverage, quote);
+        } catch (AlpacaClientException e) {
+            // Only possible exception is SocketTimeout
+            if (e.getCause().getClass() == SocketTimeoutException.class) {
+                reconnectionLoop(); // Returns if exception no longer occurs
+            }
+        }
+
+        try {
+            if (decision == 1) {
+                exchange.marketOrder(OrderSide.BUY, 0.1);
+            } else if (decision == -1) {
+                exchange.marketOrder(OrderSide.SELL, 0.1);
+            }
+        } catch (AlpacaClientException e) {
+            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
+                reconnectionLoop(); // Returns if exception no longer occurs
+                continue; // Skip sleep to immediately read data again without waiting
+            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
+                String msg = e.getAPIResponseMessage();
+                if (msg == null) {
+                    log.atError().setMessage("403 FORBIDDEN, EMPTY API RESPONSE MESSAGE").log();
+                    throw new RuntimeException();
+                }
+                double available = Double.parseDouble(msg.split(" ")[3].split("\\)")[0]);
+                try {}
+
+
+            } else {
+                log.atError().setCause(e).log();
+            }
+        }
+    }
     private int decideBasedOnPrice(double movingAverage, Quote latestQuote) {
         return -1;
     }
