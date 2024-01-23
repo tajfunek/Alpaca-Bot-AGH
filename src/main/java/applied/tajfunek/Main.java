@@ -2,21 +2,15 @@ package applied.tajfunek;
 
 
 import applied.tajfunek.alpaca.CryptoExchange;
-import applied.tajfunek.alpaca.Exchange;
+import applied.tajfunek.alpaca.MyAccount;
 import applied.tajfunek.alpaca.exceptions.SymbolException;
-import applied.tajfunek.strategy.Random;
-import applied.tajfunek.strategy.SMAStrategy;
+import applied.tajfunek.strategy.MeanReversal;
 import net.jacobpeterson.alpaca.AlpacaAPI;
-import net.jacobpeterson.alpaca.model.endpoint.account.Account;
 import net.jacobpeterson.alpaca.rest.AlpacaClientException;
-import net.jacobpeterson.alpaca.websocket.AlpacaWebsocket;
-import net.jacobpeterson.alpaca.websocket.AlpacaWebsocketMessageListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 
 
 public class Main {
@@ -35,7 +29,7 @@ public class Main {
         } catch (SymbolException | AlpacaClientException e) {
             throw new RuntimeException(e);
         }
-        SMAStrategy str = new SMAStrategy(ex, 20);
+        MeanReversal str = new MeanReversal(ex, new MyAccount(api), 20, 120, false);
         str.run(120, 30, ChronoUnit.SECONDS);
     }
 }

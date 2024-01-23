@@ -2,11 +2,11 @@ package applied.tajfunek.alpaca.exceptions;
 
 import net.jacobpeterson.alpaca.rest.AlpacaClientException;
 
-public class InsufficientSharesException extends ExchangeException {
-    private final double availableShares;
-    private final double requestedShares;
+public class InsufficientException extends ExchangeException {
+    private final double available;
+    private final double requested;
 
-    public InsufficientSharesException(AlpacaClientException ace){
+    public InsufficientException(AlpacaClientException ace){
         super(ace);
 
         String msg = ace.getAPIResponseMessage();
@@ -16,17 +16,17 @@ public class InsufficientSharesException extends ExchangeException {
             throw new RuntimeException("Critical API error, while parsing Alpaca exception");
         }
         // Message format (requested: {}, available: {})
-        this.availableShares = Double.parseDouble(msg.split(" ")[3].split("\\)")[0]);
-        this.requestedShares = Double.parseDouble(msg.split(" ")[1].split(",")[0]);
+        this.available = Double.parseDouble(msg.split(" ")[3].split("\\)")[0]);
+        this.requested = Double.parseDouble(msg.split(" ")[1].split(",")[0]);
     }
 
 
-    public double getAvailableShares() {
-        return availableShares;
+    public double getAvailable() {
+        return available;
     }
 
-    public Double getRequestedShares() {
-        return requestedShares;
+    public Double getRequested() {
+        return requested;
     }
 
     @Override

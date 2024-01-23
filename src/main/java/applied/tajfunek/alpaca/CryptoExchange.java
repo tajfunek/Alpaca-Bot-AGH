@@ -2,9 +2,9 @@ package applied.tajfunek.alpaca;
 
 import applied.tajfunek.alpaca.exceptions.*;
 import net.jacobpeterson.alpaca.AlpacaAPI;
+import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.bar.Bar;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.bar.enums.BarTimePeriod;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.quote.Quote;
-import net.jacobpeterson.alpaca.model.endpoint.marketdata.crypto.historical.bar.CryptoBar;
 import net.jacobpeterson.alpaca.model.endpoint.orders.Order;
 import net.jacobpeterson.alpaca.model.endpoint.orders.enums.OrderSide;
 import net.jacobpeterson.alpaca.model.endpoint.orders.enums.OrderTimeInForce;
@@ -16,12 +16,10 @@ import org.slf4j.LoggerFactory;
 import java.net.SocketTimeoutException;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalUnit;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.StringJoiner;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
 
-public class CryptoExchange {
+public class CryptoExchange implements Exchange {
 
     private final String symbol;
     private final AlpacaAPI api;
@@ -40,12 +38,22 @@ public class CryptoExchange {
         }
     }
 
-    public boolean isOpen() throws AlpacaClientException {
+    public boolean isOpen() throws ExchangeException {
         // You can always make trades on crypto
-        return api.clock().get().getIsOpen();
+        try {
+            return api.clock().get().getIsOpen();
+        } catch (AlpacaClientException e) {
+            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
+                throw new ConnectionException(e);
+            } else {
+                // API doesn't specify other errors
+                logger.atError().setCause(e).log();
+                throw new RuntimeException(e);
+            }
+        }
     }
 
-    public Quote getLatestQuote() throws AlpacaClientException {
+    public Quote getLatestQuote() throws ExchangeException {
         try {
             logger.atDebug().setMessage("Executing API call for latest quote on {}").addArgument(symbol).log();
             return api.cryptoMarketData().
@@ -53,27 +61,42 @@ public class CryptoExchange {
                     getQuotes().
                     get("BTC/USD");
         } catch (AlpacaClientException e) {
-            logger.atError().setCause(e).log();
-            throw e;
+            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
+                throw new ConnectionException(e);
+            } else {
+                // API doesn't specify other errors
+                logger.atError().setCause(e).log();
+                throw new RuntimeException(e);
+            }
         }
     }
 
-    public ArrayList<CryptoBar> getMarketData(int no_points, ZonedDateTime end, BarTimePeriod period, int barDuration, TemporalUnit unit) throws AlpacaClientException {
-        var response = api.cryptoMarketData().getBars(Collections.singleton(symbol),
-                end.minus(no_points, unit), end, no_points, null, barDuration, period);
+    public List<? extends Bar> getMarketData(int no_points, ZonedDateTime end, BarTimePeriod period, int barDuration, TemporalUnit unit) throws ExchangeException {
+        try {
+            var response = api.cryptoMarketData().getBars(Collections.singleton(symbol),
+                    end.minus(no_points, unit), end, no_points, null, barDuration, period);
 
-        var bars = response.getBars().get(symbol);
+            var bars = response.getBars().get(symbol);
 
-        while (bars.size() != no_points) {
-            response = api.cryptoMarketData().getBars(Collections.singleton(symbol),
-                    end.minus(no_points, unit), end, no_points, response.getNextPageToken(), barDuration, period);
-            bars.addAll(response.getBars().get(symbol));
+            while (bars.size() != no_points) {
+                response = api.cryptoMarketData().getBars(Collections.singleton(symbol),
+                        end.minus(no_points, unit), end, no_points, response.getNextPageToken(), barDuration, period);
+                bars.addAll(response.getBars().get(symbol));
+            }
+
+            return bars;
+        } catch (AlpacaClientException e) {
+            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
+                throw new ConnectionException(e);
+            } else {
+                // API doesn't specify other errors
+                logger.atError().setCause(e).log();
+                throw new RuntimeException(e);
+            }
         }
-
-        return bars;
     }
 
-    public Order marketSell(Double quantity) throws ExchangeException {
+    public Order marketOrder(Double quantity, OrderSide side) throws ExchangeException {
         logger.atDebug()
                 .setMessage("Placing MARKET SELL order: {} {} (quantity, symbol)")
                 .addArgument(quantity)
@@ -83,40 +106,7 @@ public class CryptoExchange {
         try {
             return api.orders().requestFractionalMarketOrder(symbol, quantity, side);
         } catch (AlpacaClientException e) {
-            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
-                throw new ConnectionException(e);
-            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
-                throw new InsufficientSharesException(e);
-            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
-                throw new UnprocessableRequestException(e);
-            } else {
-                // Other exceptions are not specified in API
-                logger.atError().setCause(e).log();
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
-    public Order marketBuy(Double quantity) throws ExchangeException {
-        logger.atDebug()
-                .setMessage("Placing MARKET BUY order: {} {} (quantity, symbol)")
-                .addArgument(quantity)
-                .addArgument(symbol)
-                .log();
-        try {
-            return api.orders().requestFractionalMarketOrder(symbol, quantity, OrderSide.BUY);
-        } catch (AlpacaClientException e) {
-            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
-                throw new ConnectionException(e);
-            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
-                throw new InsufficientBuyingPowerException(e);
-            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
-                throw new UnprocessableRequestException(e);
-            } else {
-                // Other exceptions are not specified in API
-                logger.atError().setCause(e).log();
-                throw new RuntimeException(e);
-            }
+            throw parseOrderException(e);
         }
     }
 
@@ -131,11 +121,11 @@ public class CryptoExchange {
         try {
             return api.orders().requestLimitOrder(symbol, quantity, side, tif, limitPrice, false);
         } catch (AlpacaClientException e) {
-            throw new ExchangeException(e);
+            throw parseOrderException(e);
         }
     }
 
-    public Order stopLimitOrder(OrderSide side, Double quantity, Double limitPrice, Double stopPrice, OrderTimeInForce tif) throws AlpacaClientException {
+    public Order stopLimitOrder(OrderSide side, Double quantity, Double limitPrice, Double stopPrice, OrderTimeInForce tif) throws ExchangeException {
         logger.atDebug()
                 .setMessage("Placing STOP LIMIT order: {} {} {} {} (side, quantity, stop, limit, symbol)")
                 .addArgument(side)
@@ -144,12 +134,16 @@ public class CryptoExchange {
                 .addArgument(limitPrice)
                 .addArgument(symbol)
                 .log();
-        return api.orders().requestOrder(symbol, quantity, null, side, OrderType.STOP_LIMIT, tif, limitPrice,
-                stopPrice, null, null, false, null, null,
-                null, null, null);
+        try {
+            return api.orders().requestOrder(symbol, quantity, null, side, OrderType.STOP_LIMIT, tif, limitPrice,
+                    stopPrice, null, null, false, null, null,
+                    null, null, null);
+        } catch (AlpacaClientException e) {
+            throw parseOrderException(e);
+        }
     }
 
-    public Order stopOrder(OrderSide side, Double quantity, Double stopPrice, OrderTimeInForce tif) throws AlpacaClientException {
+    public Order stopOrder(OrderSide side, Double quantity, Double stopPrice, OrderTimeInForce tif) throws ExchangeException {
         logger.atDebug()
                 .setMessage("Placing STOP order: {} {} {} {} (side, quantity, stop, symbol)")
                 .addArgument(side)
@@ -157,21 +151,47 @@ public class CryptoExchange {
                 .addArgument(stopPrice)
                 .addArgument(symbol)
                 .log();
-        return api.orders().requestOrder(symbol, quantity, null, side, OrderType.STOP, tif, null,
-                stopPrice, null, null, false, null, null,
-                null, null, null);
+        try {
+            return api.orders().requestOrder(symbol, quantity, null, side, OrderType.STOP, tif, null,
+                    stopPrice, null, null, false, null, null,
+                    null, null, null);
+        } catch (AlpacaClientException e) {
+            throw parseOrderException(e);
+        }
     }
 
-    public void cancelAll() throws  AlpacaClientException {
-        api.positions().close(getAsset(),null, 100.0);
+    public void cancelAll() throws ExchangeException {
+        try {
+            api.positions().close(getAsset(), null, 100.0);
+        } catch (AlpacaClientException e) {
+            if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
+                throw new ConnectionException(e);
+            } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 500) {
+                throw new LiquidateFailException(e);
+            }
+        }
+    }
+
+    private ExchangeException parseOrderException(AlpacaClientException e) {
+        if (e.getCause() != null && e.getCause().getClass() == SocketTimeoutException.class) {
+            return new ConnectionException(e);
+        } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 403) {
+            return new InsufficientException(e);
+        } else if (e.getResponseStatusCode() != null && e.getResponseStatusCode() == 422) {
+            return new UnprocessableRequestException(e);
+        } else {
+            // Other exceptions are not specified in API
+            logger.atError().setCause(e).log();
+            throw new RuntimeException(e);
+        }
     }
 
     public String getSymbol() {
         return this.symbol;
     }
 
-    private String getAsset() {
-        return String.join("",this.symbol.split("/"));
+    public String getAsset() {
+        return String.join("", this.symbol.split("/"));
     }
 }
 

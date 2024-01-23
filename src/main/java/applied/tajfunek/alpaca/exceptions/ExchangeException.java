@@ -3,7 +3,7 @@ package applied.tajfunek.alpaca.exceptions;
 import net.jacobpeterson.alpaca.rest.AlpacaClientException;
 
 public class ExchangeException extends Exception {
-   ExchangeException(AlpacaClientException ace) {
+    ExchangeException(AlpacaClientException ace) {
        super(ace);
    }
 

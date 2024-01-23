@@ -1,12 +1,16 @@
 package applied.tajfunek.alpaca;
 
+import applied.tajfunek.alpaca.exceptions.ExchangeException;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.bar.Bar;
+import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.bar.enums.BarTimePeriod;
 import net.jacobpeterson.alpaca.model.endpoint.marketdata.common.historical.quote.Quote;
 import net.jacobpeterson.alpaca.model.endpoint.orders.Order;
 import net.jacobpeterson.alpaca.model.endpoint.orders.enums.OrderSide;
 import net.jacobpeterson.alpaca.model.endpoint.orders.enums.OrderTimeInForce;
 import net.jacobpeterson.alpaca.rest.AlpacaClientException;
 
+import java.time.ZonedDateTime;
+import java.time.temporal.TemporalUnit;
 import java.util.List;
 
 /**
@@ -16,30 +20,24 @@ import java.util.List;
  * make basic types of orders
  */
 public interface Exchange {
-    /**@return True if it is possible to place an order,False otherwise
-     * @throws AlpacaClientException if underlying API calls throw an exception
-     */
-    default boolean isOpen() throws AlpacaClientException {
+
+    default boolean isOpen() throws ExchangeException {
         return false;
     }
-    /** Gets a quote from exchange for symbol connected with object
-     *
-     * @return Alpaca Quote
-     * @throws AlpacaClientException if underlying API calls throw an exception
-     */
-    Quote getLatestQuote() throws AlpacaClientException;
 
-    /** Fetch bars from a time interval
-     * @return List of bars for a given time interval
-     * @throws AlpacaClientException if underlying API calls throw an exception
-     */
-    List<Bar> getMarketData();
+    Quote getLatestQuote() throws ExchangeException;
 
-    Order marketOrder(OrderSide side, Double quantity) throws AlpacaClientException;
+    List<? extends Bar> getMarketData(int no_points, ZonedDateTime end, BarTimePeriod period, int barDuration,
+                            TemporalUnit unit) throws ExchangeException;
+
+    Order marketOrder(Double quantity, OrderSide side) throws ExchangeException;
     Order limitOrder(OrderSide side, Double quantity, Double limitPrice,
-                     OrderTimeInForce tif) throws AlpacaClientException;
+                     OrderTimeInForce tif) throws ExchangeException;
     Order stopLimitOrder(OrderSide side, Double quantity, Double limitPrice,
-                         Double stopPrice, OrderTimeInForce tif) throws AlpacaClientException;
+                         Double stopPrice, OrderTimeInForce tif) throws ExchangeException;
 
+    public void cancelAll() throws  ExchangeException;
 
+    public String getSymbol();
+    public String getAsset();
 }
